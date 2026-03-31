@@ -33,11 +33,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
-    // 🔴 Handle all other errors
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAll(Exception ex) {
+        ex.printStackTrace(); // 🔥 print real error for debugging
+
         ErrorResponse error = new ErrorResponse(
-            "Something went wrong",
+            ex.getMessage(), // now shows actual exception message
             HttpStatus.INTERNAL_SERVER_ERROR.value(),
             LocalDateTime.now()
         );

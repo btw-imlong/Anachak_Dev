@@ -8,5 +8,5 @@ public class CreateStudentRequest {
 	private String email;
 	private String password;
     private String idCardNumber;
-    private Long roomId;
+    private String roomNumber;
 }

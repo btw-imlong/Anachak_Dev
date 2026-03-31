@@ -63,31 +63,31 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
-    @Override
-    public User createStudent(CreateStudentRequest request) {
-        if (userRepo.existsByEmail(request.getEmail()))
-            throw new RuntimeException("Email already exists");
+     @Override
+     public User createStudent(CreateStudentRequest request) {
+         if (userRepo.existsByEmail(request.getEmail()))
+             throw new RuntimeException("Email already exists");
 
-        User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.STUDENT);
-        user = userRepo.save(user);
+         User user = new User();
+         user.setName(request.getName());
+         user.setEmail(request.getEmail());
+         user.setPassword(passwordEncoder.encode(request.getPassword()));
+         user.setRole(Role.STUDENT);
+         user = userRepo.save(user);
 
-        Student student = new Student();
-        student.setUser(user);
-        student.setName(request.getName());
-        student.setIdCardNumber(request.getIdCardNumber());
+         Student student = new Student();
+         student.setUser(user);
+         student.setName(request.getName());
+         student.setIdCardNumber(request.getIdCardNumber());
 
-        if (request.getRoomId() != null) {
-            student.setRoom(roomRepo.findById(request.getRoomId())
-                    .orElseThrow(() -> new RuntimeException("Room not found")));
-        }
+         if (request.getRoomNumber() != null && !request.getRoomNumber().isEmpty()) {
+             student.setRoom(roomRepo.findByRoomNumber(request.getRoomNumber())
+                     .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber())));
+         }
 
-        studentRepo.save(student);
-        return user;
-    }
+         studentRepo.save(student);
+         return user;
+     }
     // other CRUD methods
     @Override
     public LoginResponse login(LoginRequest request) {

@@ -108,7 +108,7 @@ public class DataInitializer implements CommandLineRunner {
         AttendanceRecord record = new AttendanceRecord();
         record.setAttendance(attendance);
         record.setStudent(student);
-        record.setStatus("Present");
+        record.setStatus(Status.PRESENT);
         record.setTakenBy(teacher);
         attendanceRecordRepository.save(record);
 
