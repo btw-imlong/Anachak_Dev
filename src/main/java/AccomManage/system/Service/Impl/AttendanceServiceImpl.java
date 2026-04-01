@@ -99,7 +99,15 @@ public class AttendanceServiceImpl implements AttendanceService {
 
            
 
+         // In updateBulkAttendance, replace:
             record.setStatus(Status.valueOf(r.getStatus()));
+
+            // With:
+            try {
+                record.setStatus(Status.valueOf(r.getStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Invalid status: " + r.getStatus() + ". Must be PRESENT, ABSENT, or LATE");
+            }
             record.setTakenBy(teacher);
 
             records.add(record);
@@ -133,6 +141,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         res.setPresent(present);
         res.setAbsent(absent);
         res.setLate(late);
+        res.setTotal(records.size()); // add this line
 
         return res;
     }
@@ -145,7 +154,15 @@ public class AttendanceServiceImpl implements AttendanceService {
 	    AttendanceRecord record = recordRepo.findById(recordId)
 	            .orElseThrow(() -> new RuntimeException("Attendance record not found"));
 
+	 // Replace:
 	    record.setStatus(Status.valueOf(request.getStatus()));
+
+	    // With:
+	    try {
+	        record.setStatus(Status.valueOf(request.getStatus().toUpperCase()));
+	    } catch (IllegalArgumentException e) {
+	        throw new RuntimeException("Invalid status: " + request.getStatus() + ". Must be PRESENT, ABSENT, or LATE");
+	    }
 
 	    String email = SecurityContextHolder.getContext().getAuthentication().getName();
 	    Teacher teacher = teacherRepo.findByUserEmail(email)

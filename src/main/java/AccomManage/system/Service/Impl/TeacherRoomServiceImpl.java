@@ -1,5 +1,8 @@
 package AccomManage.system.Service.Impl;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,46 +19,90 @@ import AccomManage.system.Service.TeacherRoomService;
 @Service
 public class TeacherRoomServiceImpl implements TeacherRoomService {
 
-    @Autowired 
+    @Autowired
     private TeacherRoomRepository teacherRoomRepo;
 
-    @Autowired 
+    @Autowired
     private TeacherRepository teacherRepo;
 
-    @Autowired 
+    @Autowired
     private RoomRepository roomRepo;
 
+    // ✅ Assign teacher to room
     @Override
     public AssignTeacherRoomResponse assignTeacher(AssignTeacherRoomRequest request) {
 
-        // 1️⃣ find teacher by User.id
-        Teacher teacher = teacherRepo.findByUserId(request.getTeacherId())
-                .orElseThrow(() -> new RuntimeException("Teacher not found"));
+        // 1. Find teacher by Teacher's own ID
+        Teacher teacher = teacherRepo.findById(request.getTeacherId())
+                .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + request.getTeacherId()));
 
-        // 2️⃣ find room by roomNumber
+        // 2. Find room by roomNumber
         Room room = roomRepo.findByRoomNumber(request.getRoomNumber())
-                .orElseThrow(() -> new RuntimeException("Room not found"));
+                .orElseThrow(() -> new RuntimeException("Room not found with number: " + request.getRoomNumber()));
 
-        // 3️⃣ check if room already has a teacher
-        TeacherRoom existing = teacherRoomRepo.findByRoom(room).orElse(null);
+        // 3. Check if this teacher is already assigned to this room
+        teacherRoomRepo.findByTeacherAndRoom(teacher, room).ifPresent(existing -> {
+            throw new RuntimeException("Teacher is already assigned to this room");
+        });
 
-        TeacherRoom tr;
-        if (existing != null) {
-            existing.setTeacher(teacher); // replace teacher
-            tr = teacherRoomRepo.save(existing);
-        } else {
-            // create new assignment
-            tr = new TeacherRoom();
-            tr.setTeacher(teacher);
-            tr.setRoom(room);
-            tr = teacherRoomRepo.save(tr);
-        }
+        // 4. Create new assignment
+        TeacherRoom tr = new TeacherRoom();
+        tr.setTeacher(teacher);
+        tr.setRoom(room);
+        tr = teacherRoomRepo.save(tr);
 
-        // 4️⃣ prepare response
+        return mapToResponse(tr, "Teacher assigned to room successfully");
+    }
+
+    // ✅ Get all teachers in a room
+    @Override
+    public List<AssignTeacherRoomResponse> getTeachersByRoom(String roomNumber) {
+        Room room = roomRepo.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RuntimeException("Room not found with number: " + roomNumber));
+
+        return teacherRoomRepo.findByRoom(room)
+                .stream()
+                .map(tr -> mapToResponse(tr, null))
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Get all rooms assigned to a teacher
+    @Override
+    public List<AssignTeacherRoomResponse> getRoomsByTeacher(Long teacherId) {
+        Teacher teacher = teacherRepo.findById(teacherId)
+                .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
+
+        return teacherRoomRepo.findByTeacher(teacher)
+                .stream()
+                .map(tr -> mapToResponse(tr, null))
+                .collect(Collectors.toList());
+    }
+
+    // ✅ Remove teacher from room
+    @Override
+    public void removeTeacherFromRoom(Long teacherId, String roomNumber) {
+        Teacher teacher = teacherRepo.findById(teacherId)
+                .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
+
+        Room room = roomRepo.findByRoomNumber(roomNumber)
+                .orElseThrow(() -> new RuntimeException("Room not found with number: " + roomNumber));
+
+        TeacherRoom tr = teacherRoomRepo.findByTeacherAndRoom(teacher, room)
+                .orElseThrow(() -> new RuntimeException("Assignment not found"));
+
+        teacherRoomRepo.delete(tr);
+    }
+
+    // ✅ Helper: map entity to response
+    private AssignTeacherRoomResponse mapToResponse(TeacherRoom tr, String message) {
         AssignTeacherRoomResponse response = new AssignTeacherRoomResponse();
+        response.setAssignmentId(tr.getId());
+        response.setTeacherId(tr.getTeacher().getId());
         response.setTeacherName(tr.getTeacher().getName());
+        response.setRoomId(tr.getRoom().getId());
         response.setRoomNumber(tr.getRoom().getRoomNumber());
-
+        response.setSide(tr.getRoom().getSide());
+        response.setMessage(message);
         return response;
     }
 }

@@ -1,49 +1,32 @@
 package AccomManage.system.Service.Impl;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import AccomManage.system.Dto.Request.CreateStudentRequest;
-import AccomManage.system.Dto.Request.CreateTeacherRequest;
-import AccomManage.system.Dto.Request.LoginRequest;
-import AccomManage.system.Dto.Response.LoginResponse;
-import AccomManage.system.Entity.Role;
-import AccomManage.system.Entity.Student;
-import AccomManage.system.Entity.Teacher;
-import AccomManage.system.Entity.User;
-import AccomManage.system.Repositories.RoomRepository;
-import AccomManage.system.Repositories.StudentRepository;
-import AccomManage.system.Repositories.TeacherRepository;
-import AccomManage.system.Repositories.UserRepository;
+import AccomManage.system.Dto.Request.*;
+import AccomManage.system.Dto.Response.*;
+import AccomManage.system.Entity.*;
+import AccomManage.system.Repositories.*;
 import AccomManage.system.Security.JwtUtil;
 import AccomManage.system.Service.UserService;
 
 @Service
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserRepository userRepo;
+    @Autowired private UserRepository userRepo;
+    @Autowired private TeacherRepository teacherRepo;
+    @Autowired private StudentRepository studentRepo;
+    @Autowired private RoomRepository roomRepo;
+    @Autowired private PasswordEncoder passwordEncoder;
+    @Autowired private JwtUtil jwtUtil;
 
-    @Autowired
-    private TeacherRepository teacherRepo;
-
-    @Autowired
-    private StudentRepository studentRepo;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-    
-    @Autowired
-    private RoomRepository roomRepo;
-
-    @Autowired
-    private JwtUtil jwtUtil;
-
-     @Override
-    public User createTeacher(CreateTeacherRequest request) {
+    // ✅ Create teacher
+    @Override
+    public TeacherResponse createTeacher(CreateTeacherRequest request) {
         if (userRepo.existsByEmail(request.getEmail()))
             throw new RuntimeException("Email already exists");
 
@@ -58,37 +41,127 @@ public class UserServiceImpl implements UserService {
         teacher.setUser(user);
         teacher.setName(request.getName());
         teacher.setIdCardNumber(request.getIdCardNumber());
-        teacherRepo.save(teacher);
+        teacher = teacherRepo.save(teacher);
 
-        return user;
+        return mapToTeacherResponse(teacher);
     }
 
-     @Override
-     public User createStudent(CreateStudentRequest request) {
-         if (userRepo.existsByEmail(request.getEmail()))
-             throw new RuntimeException("Email already exists");
+    // ✅ Create student
+    @Override
+    public StudentResponse createStudent(CreateStudentRequest request) {
+        if (userRepo.existsByEmail(request.getEmail()))
+            throw new RuntimeException("Email already exists");
 
-         User user = new User();
-         user.setName(request.getName());
-         user.setEmail(request.getEmail());
-         user.setPassword(passwordEncoder.encode(request.getPassword()));
-         user.setRole(Role.STUDENT);
-         user = userRepo.save(user);
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.STUDENT);
+        user = userRepo.save(user);
 
-         Student student = new Student();
-         student.setUser(user);
-         student.setName(request.getName());
-         student.setIdCardNumber(request.getIdCardNumber());
+        Student student = new Student();
+        student.setUser(user);
+        student.setName(request.getName());
+        student.setIdCardNumber(request.getIdCardNumber());
 
-         if (request.getRoomNumber() != null && !request.getRoomNumber().isEmpty()) {
-             student.setRoom(roomRepo.findByRoomNumber(request.getRoomNumber())
-                     .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber())));
-         }
+        if (request.getRoomNumber() != null && !request.getRoomNumber().isEmpty()) {
+            student.setRoom(roomRepo.findByRoomNumber(request.getRoomNumber())
+                    .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber())));
+        }
 
-         studentRepo.save(student);
-         return user;
-     }
-    // other CRUD methods
+        student = studentRepo.save(student);
+        return mapToStudentResponse(student);
+    }
+
+    // ✅ Get student by ID with room info
+    @Override
+    public StudentResponse getStudentById(Long studentId) {
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Student not found with id: " + studentId));
+        return mapToStudentResponse(student);
+    }
+
+    // ✅ Get teacher by ID with rooms info
+    @Override
+    public TeacherResponse getTeacherById(Long teacherId) {
+        Teacher teacher = teacherRepo.findById(teacherId)
+                .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
+        return mapToTeacherResponse(teacher);
+    }
+
+    // ✅ Update student
+    @Override
+    public StudentResponse updateStudent(Long studentId, UpdateStudentRequest request) {
+        Student student = studentRepo.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Student not found with id: " + studentId));
+
+        User user = student.getUser();
+
+        if (request.getName() != null) {
+            student.setName(request.getName());
+            user.setName(request.getName());
+        }
+        if (request.getEmail() != null) {
+            if (userRepo.existsByEmail(request.getEmail()) &&
+                !user.getEmail().equals(request.getEmail()))
+                throw new RuntimeException("Email already exists");
+            user.setEmail(request.getEmail());
+        }
+        if (request.getIdCardNumber() != null)
+            student.setIdCardNumber(request.getIdCardNumber());
+
+        if (request.getRoomNumber() != null && !request.getRoomNumber().isEmpty()) {
+            student.setRoom(roomRepo.findByRoomNumber(request.getRoomNumber())
+                    .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber())));
+        }
+
+        userRepo.save(user);
+        student = studentRepo.save(student);
+        return mapToStudentResponse(student);
+    }
+
+    // ✅ Update teacher
+    @Override
+    public TeacherResponse updateTeacher(Long teacherId, UpdateTeacherRequest request) {
+        Teacher teacher = teacherRepo.findById(teacherId)
+                .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
+
+        User user = teacher.getUser();
+
+        if (request.getName() != null) {
+            teacher.setName(request.getName());
+            user.setName(request.getName());
+        }
+        if (request.getEmail() != null) {
+            if (userRepo.existsByEmail(request.getEmail()) &&
+                !user.getEmail().equals(request.getEmail()))
+                throw new RuntimeException("Email already exists");
+            user.setEmail(request.getEmail());
+        }
+        if (request.getIdCardNumber() != null)
+            teacher.setIdCardNumber(request.getIdCardNumber());
+
+        userRepo.save(user);
+        teacher = teacherRepo.save(teacher);
+        return mapToTeacherResponse(teacher);
+    }
+
+    // ✅ Delete user (fixed)
+    @Override
+    public void deleteUser(Long id) {
+        User user = userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+
+        if (user.getRole() == Role.TEACHER) {
+            teacherRepo.findByUserId(id).ifPresent(teacherRepo::delete);
+        } else if (user.getRole() == Role.STUDENT) {
+            studentRepo.findByUserId(id).ifPresent(studentRepo::delete);
+        }
+
+        userRepo.deleteById(id);
+    }
+
+    // ✅ Login
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = userRepo.findByEmail(request.getEmail())
@@ -105,22 +178,59 @@ public class UserServiceImpl implements UserService {
         response.setEmail(user.getEmail());
         response.setRole(user.getRole().name());
         response.setToken(token);
-
         return response;
     }
 
+    // ✅ Get all users
     @Override
     public List<User> getAllUsers() {
         return userRepo.findAll();
     }
 
+    // ✅ Get user by ID
     @Override
     public User getUserById(Long id) {
-        return userRepo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 
-    @Override
-    public void deleteUser(Long id) {
-        userRepo.deleteById(id);
+    // ✅ Helper: map student to response
+    private StudentResponse mapToStudentResponse(Student student) {
+        StudentResponse res = new StudentResponse();
+        res.setId(student.getId());
+        res.setName(student.getName());
+        res.setEmail(student.getUser().getEmail());
+        res.setIdCardNumber(student.getIdCardNumber());
+
+        if (student.getRoom() != null) {
+            StudentResponse.RoomInfo roomInfo = new StudentResponse.RoomInfo();
+            roomInfo.setRoomId(student.getRoom().getId());
+            roomInfo.setRoomNumber(student.getRoom().getRoomNumber());
+            roomInfo.setSide(student.getRoom().getSide());
+            res.setRoom(roomInfo);
+        }
+        return res;
+    }
+
+    // ✅ Helper: map teacher to response
+    private TeacherResponse mapToTeacherResponse(Teacher teacher) {
+        TeacherResponse res = new TeacherResponse();
+        res.setId(teacher.getId());
+        res.setName(teacher.getName());
+        res.setEmail(teacher.getUser().getEmail());
+        res.setIdCardNumber(teacher.getIdCardNumber());
+
+        if (teacher.getTeacherRooms() != null) {
+            List<TeacherResponse.RoomInfo> rooms = teacher.getTeacherRooms()
+                    .stream().map(tr -> {
+                        TeacherResponse.RoomInfo info = new TeacherResponse.RoomInfo();
+                        info.setRoomId(tr.getRoom().getId());
+                        info.setRoomNumber(tr.getRoom().getRoomNumber());
+                        info.setSide(tr.getRoom().getSide());
+                        return info;
+                    }).collect(Collectors.toList());
+            res.setRooms(rooms);
+        }
+        return res;
     }
 }
