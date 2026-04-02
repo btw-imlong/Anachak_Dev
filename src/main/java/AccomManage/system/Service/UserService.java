@@ -17,7 +17,9 @@ public interface UserService {
 
     // Read single
     StudentResponse getStudentById(Long studentId);
+    StudentResponse getStudentByUserId(Long userId);
     TeacherResponse getTeacherById(Long teacherId);
+    TeacherResponse getTeacherByUserId(Long userId);
     User getUserById(Long id);
 
     // Read list

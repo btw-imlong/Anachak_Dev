@@ -27,10 +27,6 @@ public class UserServiceImpl implements UserService {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtUtil jwtUtil;
 
-    // ── Auth ───────────────────────────────────────────────────────────────────
-
-  
-
     // ── Create ─────────────────────────────────────────────────────────────────
 
     @Override
@@ -92,9 +88,25 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public StudentResponse getStudentByUserId(Long userId) {
+        Student student = studentRepo.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Student not found for userId: " + userId));
+        return mapToStudentResponse(student);
+    }
+
+    @Override
+    @Transactional
     public TeacherResponse getTeacherById(Long teacherId) {
         Teacher teacher = teacherRepo.findById(teacherId)
                 .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
+        return mapToTeacherResponse(teacher);
+    }
+
+    @Override
+    @Transactional
+    public TeacherResponse getTeacherByUserId(Long userId) {
+        Teacher teacher = teacherRepo.findByUser_Id(userId)
+                .orElseThrow(() -> new RuntimeException("Teacher not found for userId: " + userId));
         return mapToTeacherResponse(teacher);
     }
 
@@ -199,9 +211,9 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
 
         if (user.getRole() == Role.TEACHER) {
-            teacherRepo.findByUserId(id).ifPresent(teacherRepo::delete);
+            teacherRepo.findByUser_Id(id).ifPresent(teacherRepo::delete);
         } else if (user.getRole() == Role.STUDENT) {
-            studentRepo.findByUserId(id).ifPresent(studentRepo::delete);
+            studentRepo.findByUser_Id(id).ifPresent(studentRepo::delete);
         }
 
         userRepo.deleteById(id);
@@ -216,7 +228,6 @@ public class UserServiceImpl implements UserService {
         res.setEmail(student.getUser().getEmail());
         res.setIdCardNumber(student.getIdCardNumber());
 
-        // Map room + teacher
         if (student.getRoom() != null) {
             StudentResponse.RoomInfo roomInfo = new StudentResponse.RoomInfo();
             roomInfo.setRoomId(student.getRoom().getId());
@@ -239,7 +250,6 @@ public class UserServiceImpl implements UserService {
             res.setRoom(roomInfo);
         }
 
-        // Map student's services
         if (student.getServices() != null) {
             List<StudentResponse.ServiceInfo> services = student.getServices()
                 .stream().map(s -> {
@@ -275,6 +285,4 @@ public class UserServiceImpl implements UserService {
         }
         return res;
     }
-
-	
 }

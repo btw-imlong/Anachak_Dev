@@ -12,6 +12,6 @@ import AccomManage.system.Entity.Student;
 @Repository
 public interface StudentRepository extends JpaRepository<Student, Long> {
     List<Student> findByRoomId(Long roomId);
-    Optional<Student> findByUserId(Long userId);  // ✅ fixed return type
+    Optional<Student> findByUser_Id(Long userId);  // ✅ fixed return type
     Page<Student> findByRoomIsNull(Pageable pageable);
 }

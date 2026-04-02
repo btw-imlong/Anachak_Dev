@@ -22,6 +22,8 @@ public class UserController {
 
     @Autowired private UserService userService;
 
+    // ── Create ─────────────────────────────────────────────────────────────────
+
     @PostMapping("/teacher")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeacherResponse> createTeacher(@RequestBody CreateTeacherRequest request) {
@@ -42,10 +44,22 @@ public class UserController {
         return ResponseEntity.ok(userService.getStudentById(id));
     }
 
+    @GetMapping("/student/by-user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
+    public ResponseEntity<StudentResponse> getStudentByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.getStudentByUserId(userId));
+    }
+
     @GetMapping("/teacher/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<TeacherResponse> getTeacherById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getTeacherById(id));
+    }
+
+    @GetMapping("/teacher/by-user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<TeacherResponse> getTeacherByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(userService.getTeacherByUserId(userId));
     }
 
     // ── Read List ──────────────────────────────────────────────────────────────
