@@ -25,4 +25,8 @@ public class Teacher {
 
     @OneToMany(mappedBy = "teacher")
     private List<TeacherRoom> teacherRooms;
+    
+    @ManyToOne
+    @JoinColumn(name = "service_id")
+    private Service service;
 }

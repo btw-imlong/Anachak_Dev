@@ -10,8 +10,6 @@ import AccomManage.system.Entity.User;
 import java.util.List;
 
 public interface UserService {
-    // Auth
-    LoginResponse login(LoginRequest request);
 
     // Create
     TeacherResponse createTeacher(CreateTeacherRequest request);

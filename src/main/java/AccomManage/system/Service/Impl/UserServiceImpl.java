@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import AccomManage.system.Dto.Request.*;
 import AccomManage.system.Dto.Response.*;
@@ -28,24 +29,7 @@ public class UserServiceImpl implements UserService {
 
     // ── Auth ───────────────────────────────────────────────────────────────────
 
-    @Override
-    public LoginResponse login(LoginRequest request) {
-        User user = userRepo.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
-            throw new RuntimeException("Invalid password");
-
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
-
-        LoginResponse response = new LoginResponse();
-        response.setUserId(user.getId());
-        response.setName(user.getName());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole().name());
-        response.setToken(token);
-        return response;
-    }
+  
 
     // ── Create ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +83,7 @@ public class UserServiceImpl implements UserService {
     // ── Read Single ────────────────────────────────────────────────────────────
 
     @Override
+    @Transactional
     public StudentResponse getStudentById(Long studentId) {
         Student student = studentRepo.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found with id: " + studentId));
@@ -106,6 +91,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public TeacherResponse getTeacherById(Long teacherId) {
         Teacher teacher = teacherRepo.findById(teacherId)
                 .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
@@ -126,18 +112,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public Page<StudentResponse> getAllStudents(Pageable pageable) {
         return studentRepo.findAll(pageable)
                 .map(this::mapToStudentResponse);
     }
 
     @Override
+    @Transactional
     public Page<StudentResponse> getStudentsWithoutRoom(Pageable pageable) {
         return studentRepo.findByRoomIsNull(pageable)
                 .map(this::mapToStudentResponse);
     }
 
     @Override
+    @Transactional
     public Page<TeacherResponse> getAllTeachers(Pageable pageable) {
         return teacherRepo.findAll(pageable)
                 .map(this::mapToTeacherResponse);
@@ -146,6 +135,7 @@ public class UserServiceImpl implements UserService {
     // ── Update ─────────────────────────────────────────────────────────────────
 
     @Override
+    @Transactional
     public StudentResponse updateStudent(Long studentId, UpdateStudentRequest request) {
         Student student = studentRepo.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found with id: " + studentId));
@@ -176,6 +166,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public TeacherResponse updateTeacher(Long teacherId, UpdateTeacherRequest request) {
         Teacher teacher = teacherRepo.findById(teacherId)
                 .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + teacherId));
@@ -225,13 +216,42 @@ public class UserServiceImpl implements UserService {
         res.setEmail(student.getUser().getEmail());
         res.setIdCardNumber(student.getIdCardNumber());
 
+        // Map room + teacher
         if (student.getRoom() != null) {
             StudentResponse.RoomInfo roomInfo = new StudentResponse.RoomInfo();
             roomInfo.setRoomId(student.getRoom().getId());
             roomInfo.setRoomNumber(student.getRoom().getRoomNumber());
             roomInfo.setSide(student.getRoom().getSide());
+
+            if (student.getRoom().getTeacherRooms() != null) {
+                student.getRoom().getTeacherRooms().stream()
+                    .findFirst()
+                    .ifPresent(tr -> {
+                        StudentResponse.TeacherInfo teacherInfo = new StudentResponse.TeacherInfo();
+                        teacherInfo.setTeacherId(tr.getTeacher().getId());
+                        teacherInfo.setName(tr.getTeacher().getName());
+                        if (tr.getTeacher().getService() != null)
+                            teacherInfo.setServiceName(tr.getTeacher().getService().getName());
+                        roomInfo.setTeacher(teacherInfo);
+                    });
+            }
+
             res.setRoom(roomInfo);
         }
+
+        // Map student's services
+        if (student.getServices() != null) {
+            List<StudentResponse.ServiceInfo> services = student.getServices()
+                .stream().map(s -> {
+                    StudentResponse.ServiceInfo info = new StudentResponse.ServiceInfo();
+                    info.setServiceId(s.getId());
+                    info.setName(s.getName());
+                    info.setDescription(s.getDescription());
+                    return info;
+                }).collect(Collectors.toList());
+            res.setServices(services);
+        }
+
         return res;
     }
 
@@ -255,4 +275,6 @@ public class UserServiceImpl implements UserService {
         }
         return res;
     }
+
+	
 }
