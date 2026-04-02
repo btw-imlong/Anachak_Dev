@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +26,29 @@ public class UserServiceImpl implements UserService {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtUtil jwtUtil;
 
-    // ✅ Create teacher
+    // ── Auth ───────────────────────────────────────────────────────────────────
+
+    @Override
+    public LoginResponse login(LoginRequest request) {
+        User user = userRepo.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
+            throw new RuntimeException("Invalid password");
+
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+
+        LoginResponse response = new LoginResponse();
+        response.setUserId(user.getId());
+        response.setName(user.getName());
+        response.setEmail(user.getEmail());
+        response.setRole(user.getRole().name());
+        response.setToken(token);
+        return response;
+    }
+
+    // ── Create ─────────────────────────────────────────────────────────────────
+
     @Override
     public TeacherResponse createTeacher(CreateTeacherRequest request) {
         if (userRepo.existsByEmail(request.getEmail()))
@@ -46,7 +70,6 @@ public class UserServiceImpl implements UserService {
         return mapToTeacherResponse(teacher);
     }
 
-    // ✅ Create student
     @Override
     public StudentResponse createStudent(CreateStudentRequest request) {
         if (userRepo.existsByEmail(request.getEmail()))
@@ -73,7 +96,8 @@ public class UserServiceImpl implements UserService {
         return mapToStudentResponse(student);
     }
 
-    // ✅ Get student by ID with room info
+    // ── Read Single ────────────────────────────────────────────────────────────
+
     @Override
     public StudentResponse getStudentById(Long studentId) {
         Student student = studentRepo.findById(studentId)
@@ -81,7 +105,6 @@ public class UserServiceImpl implements UserService {
         return mapToStudentResponse(student);
     }
 
-    // ✅ Get teacher by ID with rooms info
     @Override
     public TeacherResponse getTeacherById(Long teacherId) {
         Teacher teacher = teacherRepo.findById(teacherId)
@@ -89,7 +112,39 @@ public class UserServiceImpl implements UserService {
         return mapToTeacherResponse(teacher);
     }
 
-    // ✅ Update student
+    @Override
+    public User getUserById(Long id) {
+        return userRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+    }
+
+    // ── Read List ──────────────────────────────────────────────────────────────
+
+    @Override
+    public List<User> getAllUsers() {
+        return userRepo.findAll();
+    }
+
+    @Override
+    public Page<StudentResponse> getAllStudents(Pageable pageable) {
+        return studentRepo.findAll(pageable)
+                .map(this::mapToStudentResponse);
+    }
+
+    @Override
+    public Page<StudentResponse> getStudentsWithoutRoom(Pageable pageable) {
+        return studentRepo.findByRoomIsNull(pageable)
+                .map(this::mapToStudentResponse);
+    }
+
+    @Override
+    public Page<TeacherResponse> getAllTeachers(Pageable pageable) {
+        return teacherRepo.findAll(pageable)
+                .map(this::mapToTeacherResponse);
+    }
+
+    // ── Update ─────────────────────────────────────────────────────────────────
+
     @Override
     public StudentResponse updateStudent(Long studentId, UpdateStudentRequest request) {
         Student student = studentRepo.findById(studentId)
@@ -120,7 +175,6 @@ public class UserServiceImpl implements UserService {
         return mapToStudentResponse(student);
     }
 
-    // ✅ Update teacher
     @Override
     public TeacherResponse updateTeacher(Long teacherId, UpdateTeacherRequest request) {
         Teacher teacher = teacherRepo.findById(teacherId)
@@ -146,7 +200,8 @@ public class UserServiceImpl implements UserService {
         return mapToTeacherResponse(teacher);
     }
 
-    // ✅ Delete user (fixed)
+    // ── Delete ─────────────────────────────────────────────────────────────────
+
     @Override
     public void deleteUser(Long id) {
         User user = userRepo.findById(id)
@@ -161,40 +216,8 @@ public class UserServiceImpl implements UserService {
         userRepo.deleteById(id);
     }
 
-    // ✅ Login
-    @Override
-    public LoginResponse login(LoginRequest request) {
-        User user = userRepo.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    // ── Mappers ────────────────────────────────────────────────────────────────
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
-            throw new RuntimeException("Invalid password");
-
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
-
-        LoginResponse response = new LoginResponse();
-        response.setUserId(user.getId());
-        response.setName(user.getName());
-        response.setEmail(user.getEmail());
-        response.setRole(user.getRole().name());
-        response.setToken(token);
-        return response;
-    }
-
-    // ✅ Get all users
-    @Override
-    public List<User> getAllUsers() {
-        return userRepo.findAll();
-    }
-
-    // ✅ Get user by ID
-    @Override
-    public User getUserById(Long id) {
-        return userRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
-    }
-
-    // ✅ Helper: map student to response
     private StudentResponse mapToStudentResponse(Student student) {
         StudentResponse res = new StudentResponse();
         res.setId(student.getId());
@@ -212,7 +235,6 @@ public class UserServiceImpl implements UserService {
         return res;
     }
 
-    // ✅ Helper: map teacher to response
     private TeacherResponse mapToTeacherResponse(Teacher teacher) {
         TeacherResponse res = new TeacherResponse();
         res.setId(teacher.getId());

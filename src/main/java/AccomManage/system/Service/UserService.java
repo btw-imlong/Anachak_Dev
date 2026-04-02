@@ -1,24 +1,32 @@
 package AccomManage.system.Service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import AccomManage.system.Dto.Request.*;
 import AccomManage.system.Dto.Response.*;
 import AccomManage.system.Entity.User;
 
+import java.util.List;
+
 public interface UserService {
+    // Auth
     LoginResponse login(LoginRequest request);
 
     // Create
-    StudentResponse createStudent(CreateStudentRequest request);
     TeacherResponse createTeacher(CreateTeacherRequest request);
+    StudentResponse createStudent(CreateStudentRequest request);
 
-    // Get all
-    List<User> getAllUsers();
-    User getUserById(Long id);
-
-    // Get by role with details
+    // Read single
     StudentResponse getStudentById(Long studentId);
     TeacherResponse getTeacherById(Long teacherId);
+    User getUserById(Long id);
+
+    // Read list
+    List<User> getAllUsers();
+    Page<StudentResponse> getAllStudents(Pageable pageable);
+    Page<StudentResponse> getStudentsWithoutRoom(Pageable pageable);
+    Page<TeacherResponse> getAllTeachers(Pageable pageable);
 
     // Update
     StudentResponse updateStudent(Long studentId, UpdateStudentRequest request);

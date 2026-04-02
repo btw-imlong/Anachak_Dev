@@ -22,23 +22,42 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Autowired private StudentRepository studentRepo;
     @Autowired private RoomRepository roomRepo;
     @Autowired private TeacherRepository teacherRepo;
+    @Autowired private TeacherRoomRepository teacherRoomRepo;
 
-    // 1️⃣ Create attendance session for a room
+    // ✅ Toggle help mode on/off
+    @Override
+    public ToggleHelpModeResponse toggleHelpMode() {
+        Teacher teacher = getLoggedInTeacher();
+        teacher.setHelpMode(!teacher.isHelpMode()); // flip it
+        teacherRepo.save(teacher);
+
+        ToggleHelpModeResponse res = new ToggleHelpModeResponse();
+        res.setTeacherId(teacher.getId());
+        res.setTeacherName(teacher.getName());
+        res.setHelpMode(teacher.isHelpMode());
+        res.setMessage(teacher.isHelpMode()
+                ? "Help mode ON — you can now mark attendance for any room"
+                : "Help mode OFF — you can only mark attendance for your assigned rooms");
+        return res;
+    }
+
+    // ✅ Create attendance session — checks room ownership
     @Override
     public void createAttendance(CreateAttendanceRequest request) {
-
         Room room = roomRepo.findByRoomNumber(request.getRoomNumber())
                 .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber()));
 
-        if (attendanceRepo.existsByRoomIdAndDate(room.getId(), request.getDate())) {
-            throw new RuntimeException("Attendance already taken for this room!");
-        }
+        // check teacher is allowed to access this room
+        Teacher teacher = getLoggedInTeacher();
+        checkRoomAccess(teacher, room);
+
+        if (attendanceRepo.existsByRoomIdAndDate(room.getId(), request.getDate()))
+            throw new RuntimeException("Attendance already taken for this room on this date!");
 
         Attendance attendance = new Attendance();
         attendance.setRoom(room);
         attendance.setDate(request.getDate());
         attendance.setCreatedAt(LocalDateTime.now());
-
         attendanceRepo.save(attendance);
 
         List<Student> students = studentRepo.findByRoomId(room.getId());
@@ -49,18 +68,20 @@ public class AttendanceServiceImpl implements AttendanceService {
             AttendanceRecord r = new AttendanceRecord();
             r.setAttendance(attendance);
             r.setStudent(s);
-            r.setStatus(Status.ABSENT); // default
+            r.setStatus(Status.ABSENT);
             records.add(r);
         }
         recordRepo.saveAll(records);
     }
 
-    // 2️⃣ Get all attendance records for a room + date
+    // ✅ Get attendance — checks room ownership
     @Override
     public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumber, LocalDate date) {
-
         Room room = roomRepo.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RuntimeException("Room not found: " + roomNumber));
+
+        Teacher teacher = getLoggedInTeacher();
+        checkRoomAccess(teacher, room);
 
         Attendance attendance = attendanceRepo.findByRoomIdAndDate(room.getId(), date)
                 .orElseThrow(() -> new RuntimeException("Attendance not found"));
@@ -72,56 +93,73 @@ public class AttendanceServiceImpl implements AttendanceService {
             AttendanceRecordResponse res = new AttendanceRecordResponse();
             res.setRecordId(r.getId());
             res.setStudentId(r.getStudent().getId());
-            res.setStudentName(r.getStudent().getUser().getName());
+            res.setStudentName(r.getStudent().getName());
             res.setStatus(r.getStatus().name());
-            if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getUser().getName());
+            if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
             response.add(res);
         }
-
         return response;
     }
 
-    // 3️⃣ Bulk update attendance
+    // ✅ Bulk update — checks room ownership via record
     @Override
     public void updateBulkAttendance(BulkAttendanceUpdateRequest request) {
-
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        Teacher teacher = teacherRepo.findByUserEmail(email)
-                .orElseThrow(() -> new RuntimeException("Teacher not found"));
-
+        Teacher teacher = getLoggedInTeacher();
         List<AttendanceRecord> records = new ArrayList<>();
 
         for (BulkAttendanceUpdateRequest.RecordUpdate r : request.getRecords()) {
-
             AttendanceRecord record = recordRepo.findById(r.getRecordId())
-                    .orElseThrow(() -> new RuntimeException("Attendance record not found"));
+                    .orElseThrow(() -> new RuntimeException("Record not found: " + r.getRecordId()));
 
-           
+            // check room access via the attendance session
+            checkRoomAccess(teacher, record.getAttendance().getRoom());
 
-         // In updateBulkAttendance, replace:
-            record.setStatus(Status.valueOf(r.getStatus()));
-
-            // With:
             try {
                 record.setStatus(Status.valueOf(r.getStatus().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Invalid status: " + r.getStatus() + ". Must be PRESENT, ABSENT, or LATE");
+                throw new RuntimeException("Invalid status: " + r.getStatus() + ". Use PRESENT, ABSENT, or LATE");
             }
             record.setTakenBy(teacher);
-
             records.add(record);
         }
-
         recordRepo.saveAll(records);
     }
 
-    // 4️⃣ Summary for a room
+    // ✅ Update single record — checks room ownership
+    @Override
+    public AttendanceRecordResponse updateAttendanceRecord(Long recordId, AttendanceRecordUpdateRequest request) {
+        AttendanceRecord record = recordRepo.findById(recordId)
+                .orElseThrow(() -> new RuntimeException("Attendance record not found"));
+
+        Teacher teacher = getLoggedInTeacher();
+        checkRoomAccess(teacher, record.getAttendance().getRoom());
+
+        try {
+            record.setStatus(Status.valueOf(request.getStatus().toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + request.getStatus() + ". Use PRESENT, ABSENT, or LATE");
+        }
+        record.setTakenBy(teacher);
+
+        AttendanceRecord updated = recordRepo.save(record);
+
+        AttendanceRecordResponse res = new AttendanceRecordResponse();
+        res.setRecordId(updated.getId());
+        res.setStudentId(updated.getStudent().getId());
+        res.setStudentName(updated.getStudent().getName());
+        res.setStatus(updated.getStatus().name());
+        if (updated.getTakenBy() != null) res.setTeacherName(updated.getTakenBy().getName());
+        return res;
+    }
+
+    // ✅ Get summary — checks room ownership
     @Override
     public AttendanceSummaryResponse getSummary(String roomNumber, LocalDate date) {
-
         Room room = roomRepo.findByRoomNumber(roomNumber)
                 .orElseThrow(() -> new RuntimeException("Room not found: " + roomNumber));
+
+        Teacher teacher = getLoggedInTeacher();
+        checkRoomAccess(teacher, room);
 
         Attendance attendance = attendanceRepo.findByRoomIdAndDate(room.getId(), date)
                 .orElseThrow(() -> new RuntimeException("Attendance not found"));
@@ -141,65 +179,53 @@ public class AttendanceServiceImpl implements AttendanceService {
         res.setPresent(present);
         res.setAbsent(absent);
         res.setLate(late);
-        res.setTotal(records.size()); // add this line
-
+        res.setTotal(records.size());
         return res;
     }
 
-	
+    // ✅ Get today's attendance
+    @Override
+    public List<AttendanceRecordResponse> getTodayAttendance() {
+        LocalDate today = LocalDate.now();
+        List<Attendance> sessions = attendanceRepo.findByDate(today);
 
-	@Override
-	public AttendanceRecordResponse updateAttendanceRecord(Long recordId, AttendanceRecordUpdateRequest request) {
+        List<AttendanceRecordResponse> response = new ArrayList<>();
+        for (Attendance a : sessions) {
+            List<AttendanceRecord> records = recordRepo.findByAttendanceId(a.getId());
+            for (AttendanceRecord r : records) {
+                AttendanceRecordResponse res = new AttendanceRecordResponse();
+                res.setRecordId(r.getId());
+                res.setStudentId(r.getStudent().getId());
+                res.setStudentName(r.getStudent().getName());
+                res.setStatus(r.getStatus().name());
+                if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
+                response.add(res);
+            }
+        }
+        return response;
+    }
 
-	    AttendanceRecord record = recordRepo.findById(recordId)
-	            .orElseThrow(() -> new RuntimeException("Attendance record not found"));
+    // ✅ Helper: get logged in teacher
+    private Teacher getLoggedInTeacher() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return teacherRepo.findByUserEmail(email)
+                .orElseThrow(() -> new RuntimeException("Teacher not found"));
+    }
 
-	 // Replace:
-	    record.setStatus(Status.valueOf(request.getStatus()));
+    // ✅ Helper: check if teacher can access this room
+    private void checkRoomAccess(Teacher teacher, Room room) {
+        if (teacher.isHelpMode()) return; // 👈 help mode = access any room
 
-	    // With:
-	    try {
-	        record.setStatus(Status.valueOf(request.getStatus().toUpperCase()));
-	    } catch (IllegalArgumentException e) {
-	        throw new RuntimeException("Invalid status: " + request.getStatus() + ". Must be PRESENT, ABSENT, or LATE");
-	    }
+        // check if teacher is assigned to this room
+        boolean isAssigned = teacherRoomRepo
+                .findByTeacherAndRoom(teacher, room)
+                .isPresent();
 
-	    String email = SecurityContextHolder.getContext().getAuthentication().getName();
-	    Teacher teacher = teacherRepo.findByUserEmail(email)
-	            .orElseThrow(() -> new RuntimeException("Teacher not found"));
-
-	    record.setTakenBy(teacher);
-
-	    AttendanceRecord updated = recordRepo.save(record);
-
-	    AttendanceRecordResponse res = new AttendanceRecordResponse();
-	    res.setRecordId(updated.getId());
-	    res.setStudentId(updated.getStudent().getId());
-	    res.setStudentName(updated.getStudent().getUser().getName());
-	    res.setStatus(updated.getStatus().name());
-	    if (updated.getTakenBy() != null) res.setTeacherName(updated.getTakenBy().getUser().getName());
-
-	    return res;
-	}
-
-	@Override
-	public List<AttendanceRecordResponse> getTodayAttendance() {
-	    LocalDate today = LocalDate.now();
-	    List<Attendance> sessions = attendanceRepo.findByDate(today);
-
-	    List<AttendanceRecordResponse> response = new ArrayList<>();
-	    for (Attendance a : sessions) {
-	        List<AttendanceRecord> records = recordRepo.findByAttendanceId(a.getId());
-	        for (AttendanceRecord r : records) {
-	            AttendanceRecordResponse res = new AttendanceRecordResponse();
-	            res.setRecordId(r.getId());
-	            res.setStudentId(r.getStudent().getId());
-	            res.setStudentName(r.getStudent().getUser().getName());
-	            res.setStatus(r.getStatus().name());
-	            if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getUser().getName());
-	            response.add(res);
-	        }
-	    }
-	    return response;
-	}
+        if (!isAssigned) {
+            throw new RuntimeException(
+                "Access denied — you are not assigned to room " + room.getRoomNumber() +
+                ". Enable help mode to mark attendance for other rooms."
+            );
+        }
+    }
 }

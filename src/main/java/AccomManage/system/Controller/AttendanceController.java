@@ -72,17 +72,20 @@ public class AttendanceController {
     }
  // Add these to AttendanceController.java
 
- // ✅ Update single attendance record
- @PutMapping("/{recordId}")
- public ResponseEntity<AttendanceRecordResponse> updateRecord(
-         @PathVariable Long recordId,
-         @RequestBody AttendanceRecordUpdateRequest request) {
-     return ResponseEntity.ok(service.updateAttendanceRecord(recordId, request));
- }
+    @PutMapping("/{recordId}")
+    public ResponseEntity<AttendanceRecordResponse> updateRecord(
+            @PathVariable Long recordId,
+            @RequestBody AttendanceRecordUpdateRequest request) {
+        return ResponseEntity.ok(service.updateAttendanceRecord(recordId, request));
+    }
 
- // ✅ Get today's attendance (all rooms)
- @GetMapping("/today")
- public ResponseEntity<List<AttendanceRecordResponse>> today() {
-     return ResponseEntity.ok(service.getTodayAttendance());
+    @GetMapping("/today")
+    public ResponseEntity<List<AttendanceRecordResponse>> today() {
+        return ResponseEntity.ok(service.getTodayAttendance());
+    }
+ 
+ @PatchMapping("/help-mode")
+ public ResponseEntity<ToggleHelpModeResponse> toggleHelpMode() {
+     return ResponseEntity.ok(service.toggleHelpMode());
  }
 }

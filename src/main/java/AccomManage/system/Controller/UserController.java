@@ -1,7 +1,12 @@
 package AccomManage.system.Controller;
 
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,21 +22,34 @@ public class UserController {
 
     @Autowired private UserService userService;
 
-    // 🔐 Create teacher - Admin only
     @PostMapping("/teacher")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeacherResponse> createTeacher(@RequestBody CreateTeacherRequest request) {
         return ResponseEntity.ok(userService.createTeacher(request));
     }
 
-    // 🔐 Create student - Admin only
     @PostMapping("/student")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StudentResponse> createStudent(@RequestBody CreateStudentRequest request) {
         return ResponseEntity.ok(userService.createStudent(request));
     }
 
-    // 🔐 Get all users
+    // ── Read Single ────────────────────────────────────────────────────────────
+
+    @GetMapping("/student/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<StudentResponse> getStudentById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getStudentById(id));
+    }
+
+    @GetMapping("/teacher/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<TeacherResponse> getTeacherById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getTeacherById(id));
+    }
+
+    // ── Read List ──────────────────────────────────────────────────────────────
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
@@ -42,30 +60,48 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    // 🔐 Get student by ID with room info
-    @GetMapping("/student/{id}")
+    @GetMapping("/students")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<StudentResponse> getStudentById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getStudentById(id));
+    public ResponseEntity<Page<StudentResponse>> getAllStudents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        return ResponseEntity.ok(userService.getAllStudents(pageable));
     }
 
-    // 🔐 Get teacher by ID with rooms info
-    @GetMapping("/teacher/{id}")
+    @GetMapping("/students/no-room")
     @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
-    public ResponseEntity<TeacherResponse> getTeacherById(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getTeacherById(id));
+    public ResponseEntity<Page<StudentResponse>> getStudentsWithoutRoom(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("name"));
+        return ResponseEntity.ok(userService.getStudentsWithoutRoom(pageable));
     }
 
-    // 🔐 Update student
+    @GetMapping("/teachers")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<Page<TeacherResponse>> getAllTeachers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "name") String sortBy) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+        return ResponseEntity.ok(userService.getAllTeachers(pageable));
+    }
+
+    // ── Update ─────────────────────────────────────────────────────────────────
+
     @PutMapping("/student/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<StudentResponse> updateStudent(
             @PathVariable Long id,
             @RequestBody UpdateStudentRequest request) {
         return ResponseEntity.ok(userService.updateStudent(id, request));
     }
 
-    // 🔐 Update teacher
     @PutMapping("/teacher/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TeacherResponse> updateTeacher(
@@ -74,7 +110,8 @@ public class UserController {
         return ResponseEntity.ok(userService.updateTeacher(id, request));
     }
 
-    // 🔐 Delete user
+    // ── Delete ─────────────────────────────────────────────────────────────────
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
