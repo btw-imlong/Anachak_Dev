@@ -88,4 +88,8 @@ public class AttendanceController {
  public ResponseEntity<ToggleHelpModeResponse> toggleHelpMode() {
      return ResponseEntity.ok(service.toggleHelpMode());
  }
+ @GetMapping("/today/summary")
+ public ResponseEntity<AttendanceSummaryResponse> todaySummaryForTeacher() {
+     return ResponseEntity.ok(service.getTodaySummaryForTeacher());
+ }
 }

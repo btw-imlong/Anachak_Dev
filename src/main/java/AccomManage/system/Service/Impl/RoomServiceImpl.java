@@ -79,12 +79,37 @@ public class RoomServiceImpl implements RoomService {
         // 2. then delete the room (students + attendances auto deleted via cascade)
         roomRepo.deleteById(id);
     }
-    // ✅ Helper: simple room response
     private RoomResponse mapToRoomResponse(Room room) {
         RoomResponse res = new RoomResponse();
         res.setId(room.getId());
         res.setRoomNumber(room.getRoomNumber());
         res.setSide(room.getSide());
+
+        // map teachers
+        if (room.getTeacherRooms() != null) {
+            List<RoomResponse.TeacherInfo> teachers = room.getTeacherRooms()
+                .stream().map(tr -> {
+                    RoomResponse.TeacherInfo info = new RoomResponse.TeacherInfo();
+                    info.setTeacherId(tr.getTeacher().getId());
+                    info.setName(tr.getTeacher().getName());
+                    return info;
+                }).toList();
+            res.setTeachers(teachers);
+        }
+
+        // map students
+        if (room.getStudents() != null) {
+            List<RoomResponse.StudentInfo> students = room.getStudents()
+                .stream().map(s -> {
+                    RoomResponse.StudentInfo info = new RoomResponse.StudentInfo();
+                    info.setStudentId(s.getId());
+                    info.setName(s.getName());
+                    info.setIdCardNumber(s.getIdCardNumber());
+                    return info;
+                }).toList();
+            res.setStudents(students);
+        }
+
         return res;
     }
 

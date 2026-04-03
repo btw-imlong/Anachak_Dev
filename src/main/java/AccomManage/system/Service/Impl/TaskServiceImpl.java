@@ -39,6 +39,34 @@ public class TaskServiceImpl implements TaskService {
         Room room = roomRepo.findByRoomNumber(request.getRoomNumber())
                 .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber()));
 
+        // ✅ Rule 1: same room + same day + same time = duplicate
+        boolean sameRoomDuplicate = taskRepo.existsByRoomIdAndDayOfWeekAndTaskTime(
+                room.getId(),
+                parseDayOfWeek(request.getDayOfWeek()),
+                request.getTaskTime()
+        );
+        if (sameRoomDuplicate)
+            throw new RuntimeException(
+                "A task already exists in room " + request.getRoomNumber() +
+                " on " + request.getDayOfWeek() +
+                " at " + request.getTaskTime()
+            );
+
+        // ✅ Rule 2: same side + same title + same time = duplicate
+        boolean sameSideDuplicate = taskRepo.existsDuplicateOnSameSide(
+                room.getSide(),
+                parseDayOfWeek(request.getDayOfWeek()),
+                request.getTitle(),
+                request.getTaskTime(),
+                room.getId()
+        );
+        if (sameSideDuplicate)
+            throw new RuntimeException(
+                "A task with the same title and time already exists " +
+                "in another room on the " + room.getSide() + " side on " +
+                request.getDayOfWeek()
+            );
+
         Task task = new Task();
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
@@ -49,21 +77,51 @@ public class TaskServiceImpl implements TaskService {
 
         return mapToTaskResponse(taskRepo.save(task));
     }
-
     // ✅ Update task (change schedule)
     @Override
-    public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
-        Task task = taskRepo.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
+    Task task = taskRepo.findById(taskId)
+            .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
-        if (request.getTitle() != null) task.setTitle(request.getTitle());
-        if (request.getDescription() != null) task.setDescription(request.getDescription());
-        if (request.getDayOfWeek() != null) task.setDayOfWeek(parseDayOfWeek(request.getDayOfWeek()));
-        if (request.getTaskTime() != null) task.setTaskTime(request.getTaskTime());
-        task.setStatus(TaskStatus.PENDING); // reset to pending when schedule changes
+    DayOfWeek newDay = request.getDayOfWeek() != null
+            ? parseDayOfWeek(request.getDayOfWeek())
+            : task.getDayOfWeek();
 
-        return mapToTaskResponse(taskRepo.save(task));
-    }
+    java.time.LocalTime newTime = request.getTaskTime() != null
+            ? request.getTaskTime()
+            : task.getTaskTime();
+
+    String newTitle = request.getTitle() != null
+            ? request.getTitle()
+            : task.getTitle();
+
+    // ✅ Rule 1: same room + same day + same time (exclude self)
+    boolean sameRoomDuplicate = taskRepo
+            .existsByRoomIdAndDayOfWeekAndTaskTimeAndIdNot(
+                    task.getRoom().getId(), newDay, newTime, taskId);
+    if (sameRoomDuplicate)
+        throw new RuntimeException(
+            "A task already exists in this room on " +
+            newDay + " at " + newTime
+        );
+
+    // ✅ Rule 2: same side + same title + same time (exclude self)
+    boolean sameSideDuplicate = taskRepo.existsDuplicateOnSameSide(
+            task.getRoom().getSide(), newDay, newTitle, newTime, task.getRoom().getId());
+    if (sameSideDuplicate)
+        throw new RuntimeException(
+            "A task with the same title and time already exists " +
+            "on the " + task.getRoom().getSide() + " side on " + newDay
+        );
+
+    if (request.getTitle() != null) task.setTitle(newTitle);
+    if (request.getDescription() != null) task.setDescription(request.getDescription());
+    if (request.getDayOfWeek() != null) task.setDayOfWeek(newDay);
+    if (request.getTaskTime() != null) task.setTaskTime(newTime);
+    task.setStatus(TaskStatus.PENDING);
+
+    return mapToTaskResponse(taskRepo.save(task));
+}
 
     // ✅ Delete task
     @Override

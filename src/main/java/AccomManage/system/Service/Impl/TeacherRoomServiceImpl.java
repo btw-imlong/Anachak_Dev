@@ -28,24 +28,27 @@ public class TeacherRoomServiceImpl implements TeacherRoomService {
     @Autowired
     private RoomRepository roomRepo;
 
-    // ✅ Assign teacher to room
+  
     @Override
     public AssignTeacherRoomResponse assignTeacher(AssignTeacherRoomRequest request) {
 
-        // 1. Find teacher by Teacher's own ID
         Teacher teacher = teacherRepo.findById(request.getTeacherId())
                 .orElseThrow(() -> new RuntimeException("Teacher not found with id: " + request.getTeacherId()));
 
-        // 2. Find room by roomNumber
         Room room = roomRepo.findByRoomNumber(request.getRoomNumber())
                 .orElseThrow(() -> new RuntimeException("Room not found with number: " + request.getRoomNumber()));
 
-        // 3. Check if this teacher is already assigned to this room
-        teacherRoomRepo.findByTeacherAndRoom(teacher, room).ifPresent(existing -> {
+        // ✅ Check if room already has a teacher assigned
+        List<TeacherRoom> existing = teacherRoomRepo.findByRoom(room);
+        if (!existing.isEmpty()) {
+            throw new RuntimeException("Room " + request.getRoomNumber() + " already has a teacher assigned");
+        }
+
+        // Check duplicate assignment
+        teacherRoomRepo.findByTeacherAndRoom(teacher, room).ifPresent(e -> {
             throw new RuntimeException("Teacher is already assigned to this room");
         });
 
-        // 4. Create new assignment
         TeacherRoom tr = new TeacherRoom();
         tr.setTeacher(teacher);
         tr.setRoom(room);

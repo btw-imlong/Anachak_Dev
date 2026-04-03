@@ -18,4 +18,5 @@ public interface AttendanceService {
     AttendanceRecordResponse updateAttendanceRecord(Long recordId, AttendanceRecordUpdateRequest request);
     List<AttendanceRecordResponse> getTodayAttendance();
     ToggleHelpModeResponse toggleHelpMode(); // 👈 add this
+    AttendanceSummaryResponse getTodaySummaryForTeacher();
 }

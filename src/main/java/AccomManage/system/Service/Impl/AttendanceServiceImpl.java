@@ -75,31 +75,32 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     // ✅ Get attendance — checks room ownership
-    @Override
-    public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumber, LocalDate date) {
-        Room room = roomRepo.findByRoomNumber(roomNumber)
-                .orElseThrow(() -> new RuntimeException("Room not found: " + roomNumber));
+   @Override
+public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumber, LocalDate date) {
+    Room room = roomRepo.findByRoomNumber(roomNumber)
+            .orElseThrow(() -> new RuntimeException("Room not found: " + roomNumber));
 
-        Teacher teacher = getLoggedInTeacher();
-        checkRoomAccess(teacher, room);
+    Teacher teacher = getLoggedInTeacher();
+    checkRoomAccess(teacher, room);
 
-        Attendance attendance = attendanceRepo.findByRoomIdAndDate(room.getId(), date)
-                .orElseThrow(() -> new RuntimeException("Attendance not found"));
+    // ✅ return empty list instead of throwing
+    Optional<Attendance> attendanceOpt = attendanceRepo.findByRoomIdAndDate(room.getId(), date);
+    if (attendanceOpt.isEmpty()) return List.of();
 
-        List<AttendanceRecord> records = recordRepo.findByAttendanceId(attendance.getId());
-        List<AttendanceRecordResponse> response = new ArrayList<>();
+    List<AttendanceRecord> records = recordRepo.findByAttendanceId(attendanceOpt.get().getId());
+    List<AttendanceRecordResponse> response = new ArrayList<>();
 
-        for (AttendanceRecord r : records) {
-            AttendanceRecordResponse res = new AttendanceRecordResponse();
-            res.setRecordId(r.getId());
-            res.setStudentId(r.getStudent().getId());
-            res.setStudentName(r.getStudent().getName());
-            res.setStatus(r.getStatus().name());
-            if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
-            response.add(res);
-        }
-        return response;
+    for (AttendanceRecord r : records) {
+        AttendanceRecordResponse res = new AttendanceRecordResponse();
+        res.setRecordId(r.getId());
+        res.setStudentId(r.getStudent().getId());
+        res.setStudentName(r.getStudent().getName());
+        res.setStatus(r.getStatus().name());
+        if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
+        response.add(res);
     }
+    return response;
+}
 
     // ✅ Bulk update — checks room ownership via record
     @Override
@@ -227,5 +228,41 @@ public class AttendanceServiceImpl implements AttendanceService {
                 ". Enable help mode to mark attendance for other rooms."
             );
         }
+    }
+    @Override
+    public AttendanceSummaryResponse getTodaySummaryForTeacher() {
+        Teacher teacher = getLoggedInTeacher();
+        LocalDate today = LocalDate.now();
+
+        // get all rooms assigned to this teacher
+        List<TeacherRoom> teacherRooms = teacherRoomRepo.findByTeacher(teacher);
+
+        int present = 0, absent = 0, late = 0, total = 0;
+
+        for (TeacherRoom tr : teacherRooms) {
+            Optional<Attendance> session = attendanceRepo
+                    .findByRoomIdAndDate(tr.getRoom().getId(), today);
+
+            if (session.isEmpty()) continue;
+
+            List<AttendanceRecord> records = recordRepo
+                    .findByAttendanceId(session.get().getId());
+
+            for (AttendanceRecord r : records) {
+                switch (r.getStatus()) {
+                    case PRESENT -> present++;
+                    case ABSENT -> absent++;
+                    case LATE -> late++;
+                }
+                total++;
+            }
+        }
+
+        AttendanceSummaryResponse res = new AttendanceSummaryResponse();
+        res.setPresent(present);
+        res.setAbsent(absent);
+        res.setLate(late);
+        res.setTotal(total);
+        return res;
     }
 }
