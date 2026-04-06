@@ -3,6 +3,7 @@ package AccomManage.system.Service.Impl;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -265,4 +266,47 @@ public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumb
         res.setTotal(total);
         return res;
     }
+ // Add inside AttendanceServiceImpl.java
+
+ // ✅ Helper: get logged-in student
+    private Student getLoggedInStudent() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return studentRepo.findByUser_Email(email)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+    }
+
+ // ✅ Helper: map AttendanceRecord → AttendanceRecordResponse (avoids repeating yourself)
+ private AttendanceRecordResponse mapRecord(AttendanceRecord r) {
+     AttendanceRecordResponse res = new AttendanceRecordResponse();
+     res.setRecordId(r.getId());
+     res.setStudentId(r.getStudent().getId());
+     res.setStudentName(r.getStudent().getName());
+     res.setStatus(r.getStatus().name());
+     res.setDate(r.getAttendance().getDate()); // 👈 uses the new field
+     if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
+     return res;
+ }
+
+ // ✅ Student: get all their own attendance
+ @Override
+ public List<AttendanceRecordResponse> getMyAttendance() {
+     Student student = getLoggedInStudent();
+     return recordRepo.findByStudentId(student.getId())
+             .stream()
+             .map(this::mapRecord)
+             .sorted(Comparator.comparing(AttendanceRecordResponse::getDate).reversed())
+             .collect(Collectors.toList());
+ }
+
+ // ✅ Student: get own attendance filtered by date range
+ @Override
+ public List<AttendanceRecordResponse> getMyAttendanceByRange(LocalDate from, LocalDate to) {
+     Student student = getLoggedInStudent();
+     return recordRepo.findByStudentIdAndAttendance_DateBetween(student.getId(), from, to)
+             .stream()
+             .map(this::mapRecord)
+             .sorted(Comparator.comparing(AttendanceRecordResponse::getDate).reversed())
+             .collect(Collectors.toList());
+ }
+    
 }

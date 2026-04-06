@@ -56,7 +56,7 @@ public class AccomServiceController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
     public ResponseEntity<List<StudentServiceResponse>> getByStudent(@PathVariable Long studentId) {
         return ResponseEntity.ok(accomService.getServicesByStudent(studentId));
     }

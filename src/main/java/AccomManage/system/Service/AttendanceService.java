@@ -19,4 +19,7 @@ public interface AttendanceService {
     List<AttendanceRecordResponse> getTodayAttendance();
     ToggleHelpModeResponse toggleHelpMode(); // 👈 add this
     AttendanceSummaryResponse getTodaySummaryForTeacher();
+ // Add to AttendanceService.java
+    List<AttendanceRecordResponse> getMyAttendance();
+    List<AttendanceRecordResponse> getMyAttendanceByRange(LocalDate from, LocalDate to);
 }

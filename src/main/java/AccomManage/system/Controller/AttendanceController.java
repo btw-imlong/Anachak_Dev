@@ -92,4 +92,5 @@ public class AttendanceController {
  public ResponseEntity<AttendanceSummaryResponse> todaySummaryForTeacher() {
      return ResponseEntity.ok(service.getTodaySummaryForTeacher());
  }
+ 
 }
