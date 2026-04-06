@@ -14,4 +14,5 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     List<Student> findByRoomId(Long roomId);
     Optional<Student> findByUser_Id(Long userId);  // ✅ fixed return type
     Page<Student> findByRoomIsNull(Pageable pageable);
+    Optional<Student> findByUser_Email(String email);
 }
