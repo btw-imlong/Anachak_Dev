@@ -70,4 +70,11 @@ public class RoomController {
         roomService.deleteRoom(id);
         return ResponseEntity.ok("Room deleted successfully");
     }
+ // 🔐 Remove students from room
+    @DeleteMapping("/remove-students")
+    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+    public ResponseEntity<String> removeStudents(@RequestBody AssignStudentsRequest request) {
+        roomAssignmentService.removeStudents(request);
+        return ResponseEntity.ok("Students removed from room " + request.getRoomNumber());
+    }
 }

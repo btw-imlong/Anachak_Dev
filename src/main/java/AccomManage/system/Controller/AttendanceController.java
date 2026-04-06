@@ -15,7 +15,7 @@ import AccomManage.system.Service.AttendanceService;
 
 @RestController
 @RequestMapping("/api/attendance")
-@PreAuthorize("hasRole('TEACHER')")
+@PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
 public class AttendanceController {
 
     private final AttendanceService service;

@@ -9,7 +9,6 @@ public class TaskResponse {
     private String description;
     private String dayOfWeek;
     private String taskTime;
-    private String status;
     private String roomNumber;
-    private String side; // Girls or Boys
+    private String side;
 }

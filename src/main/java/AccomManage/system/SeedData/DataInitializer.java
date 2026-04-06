@@ -169,7 +169,7 @@ public class DataInitializer implements CommandLineRunner {
         boysMorningMon.setDescription("All boys gather at the front yard for roll call");
         boysMorningMon.setDayOfWeek(DayOfWeek.MONDAY);
         boysMorningMon.setTaskTime(LocalTime.of(5, 30));
-        boysMorningMon.setStatus(TaskStatus.PENDING);
+       
         boysMorningMon.setRoom(boysRoom);
 
         Task boysEveningMon = new Task();
@@ -177,7 +177,7 @@ public class DataInitializer implements CommandLineRunner {
         boysEveningMon.setDescription("Clean and tidy the boys dormitory");
         boysEveningMon.setDayOfWeek(DayOfWeek.MONDAY);
         boysEveningMon.setTaskTime(LocalTime.of(21, 0));
-        boysEveningMon.setStatus(TaskStatus.PENDING);
+ 
         boysEveningMon.setRoom(boysRoom);
 
         Task boysMorningTue = new Task();
@@ -185,7 +185,7 @@ public class DataInitializer implements CommandLineRunner {
         boysMorningTue.setDescription("Morning exercise session at the field");
         boysMorningTue.setDayOfWeek(DayOfWeek.TUESDAY);
         boysMorningTue.setTaskTime(LocalTime.of(5, 30));
-        boysMorningTue.setStatus(TaskStatus.PENDING);
+   
         boysMorningTue.setRoom(boysRoom);
 
         // ===== TASKS (Girls Room 102) =====
@@ -194,7 +194,7 @@ public class DataInitializer implements CommandLineRunner {
         girlsMorningMon.setDescription("All girls gather at the garden for roll call");
         girlsMorningMon.setDayOfWeek(DayOfWeek.MONDAY);
         girlsMorningMon.setTaskTime(LocalTime.of(5, 30));
-        girlsMorningMon.setStatus(TaskStatus.PENDING);
+      
         girlsMorningMon.setRoom(girlsRoom);
 
         Task girlsEveningMon = new Task();
@@ -202,7 +202,7 @@ public class DataInitializer implements CommandLineRunner {
         girlsEveningMon.setDescription("Clean and tidy the girls dormitory");
         girlsEveningMon.setDayOfWeek(DayOfWeek.MONDAY);
         girlsEveningMon.setTaskTime(LocalTime.of(21, 0));
-        girlsEveningMon.setStatus(TaskStatus.PENDING);
+      
         girlsEveningMon.setRoom(girlsRoom);
 
         Task girlsMorningTue = new Task();
@@ -210,7 +210,7 @@ public class DataInitializer implements CommandLineRunner {
         girlsMorningTue.setDescription("Morning exercise session at the girls court");
         girlsMorningTue.setDayOfWeek(DayOfWeek.TUESDAY);
         girlsMorningTue.setTaskTime(LocalTime.of(5, 30));
-        girlsMorningTue.setStatus(TaskStatus.PENDING);
+      
         girlsMorningTue.setRoom(girlsRoom);
 
         taskRepository.saveAll(List.of(

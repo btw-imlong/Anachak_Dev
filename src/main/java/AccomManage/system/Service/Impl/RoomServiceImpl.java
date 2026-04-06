@@ -4,13 +4,16 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import AccomManage.system.Dto.Request.AssignStudentsRequest;
 import AccomManage.system.Dto.Request.CreateRoomRequest;
 import AccomManage.system.Dto.Response.RoomDetailResponse;
 import AccomManage.system.Dto.Response.RoomResponse;
 import AccomManage.system.Entity.Room;
 import AccomManage.system.Entity.TeacherRoom;
+import AccomManage.system.Entity.User;
 import AccomManage.system.Repositories.RoomRepository;
 import AccomManage.system.Repositories.TeacherRoomRepository;
+import AccomManage.system.Repositories.UserRepository;
 import AccomManage.system.Service.RoomService;
 
 @Service
@@ -20,6 +23,9 @@ public class RoomServiceImpl implements RoomService {
     private RoomRepository roomRepo;
     @Autowired
     private TeacherRoomRepository teacherRoomRepo;
+    
+    @Autowired
+    private UserRepository userRepo;
 
     // ✅ Create room
     @Override
@@ -112,7 +118,18 @@ public class RoomServiceImpl implements RoomService {
 
         return res;
     }
+    public void removeStudents(AssignStudentsRequest request) {
+        Room room = roomRepo.findByRoomNumber(request.getRoomNumber())
+            .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber()));
 
+        List<User> students = userRepo.findAllById(request.getStudentIds());
+        for (User student : students) {
+            if (student.getRoom() != null && student.getRoom().getId().equals(room.getId())) {
+                student.setRoom(null);
+            }
+        }
+        userRepo.saveAll(students);
+    }
     // ✅ Helper: detailed room response with students + teachers
     private RoomDetailResponse mapToRoomDetailResponse(Room room) {
         RoomDetailResponse res = new RoomDetailResponse();

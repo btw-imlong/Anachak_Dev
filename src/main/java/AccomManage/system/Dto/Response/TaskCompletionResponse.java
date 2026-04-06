@@ -11,4 +11,5 @@ public class TaskCompletionResponse {
     private String markedAt;
     private String markedByRole;
     private String markedByName;
+    private String roomNumber;
 }

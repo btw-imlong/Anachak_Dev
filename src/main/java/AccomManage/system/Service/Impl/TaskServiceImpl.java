@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import AccomManage.system.Dto.Request.CreateTaskRequest;
 import AccomManage.system.Dto.Request.MarkTaskDoneRequest;
@@ -18,7 +19,6 @@ import AccomManage.system.Dto.Response.TaskResponse;
 import AccomManage.system.Entity.Room;
 import AccomManage.system.Entity.Task;
 import AccomManage.system.Entity.TaskCompletion;
-import AccomManage.system.Entity.TaskStatus;
 import AccomManage.system.Repositories.RoomRepository;
 import AccomManage.system.Repositories.TaskCompletionRepository;
 import AccomManage.system.Repositories.TaskRepository;
@@ -33,13 +33,11 @@ public class TaskServiceImpl implements TaskService {
     @Autowired private RoomRepository roomRepo;
     @Autowired private UserRepository userRepo;
 
-    // ✅ Create task for a room
     @Override
     public TaskResponse createTask(CreateTaskRequest request) {
         Room room = roomRepo.findByRoomNumber(request.getRoomNumber())
                 .orElseThrow(() -> new RuntimeException("Room not found: " + request.getRoomNumber()));
 
-        // ✅ Rule 1: same room + same day + same time = duplicate
         boolean sameRoomDuplicate = taskRepo.existsByRoomIdAndDayOfWeekAndTaskTime(
                 room.getId(),
                 parseDayOfWeek(request.getDayOfWeek()),
@@ -52,7 +50,6 @@ public class TaskServiceImpl implements TaskService {
                 " at " + request.getTaskTime()
             );
 
-        // ✅ Rule 2: same side + same title + same time = duplicate
         boolean sameSideDuplicate = taskRepo.existsDuplicateOnSameSide(
                 room.getSide(),
                 parseDayOfWeek(request.getDayOfWeek()),
@@ -72,71 +69,61 @@ public class TaskServiceImpl implements TaskService {
         task.setDescription(request.getDescription());
         task.setDayOfWeek(parseDayOfWeek(request.getDayOfWeek()));
         task.setTaskTime(request.getTaskTime());
-        task.setStatus(TaskStatus.PENDING);
         task.setRoom(room);
 
         return mapToTaskResponse(taskRepo.save(task));
     }
-    // ✅ Update task (change schedule)
+
     @Override
-public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
-    Task task = taskRepo.findById(taskId)
-            .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
+    public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
+        Task task = taskRepo.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found with id: " + taskId));
 
-    DayOfWeek newDay = request.getDayOfWeek() != null
-            ? parseDayOfWeek(request.getDayOfWeek())
-            : task.getDayOfWeek();
+        DayOfWeek newDay = request.getDayOfWeek() != null
+                ? parseDayOfWeek(request.getDayOfWeek())
+                : task.getDayOfWeek();
 
-    java.time.LocalTime newTime = request.getTaskTime() != null
-            ? request.getTaskTime()
-            : task.getTaskTime();
+        java.time.LocalTime newTime = request.getTaskTime() != null
+                ? request.getTaskTime()
+                : task.getTaskTime();
 
-    String newTitle = request.getTitle() != null
-            ? request.getTitle()
-            : task.getTitle();
+        String newTitle = request.getTitle() != null
+                ? request.getTitle()
+                : task.getTitle();
 
-    // ✅ Rule 1: same room + same day + same time (exclude self)
-    boolean sameRoomDuplicate = taskRepo
-            .existsByRoomIdAndDayOfWeekAndTaskTimeAndIdNot(
-                    task.getRoom().getId(), newDay, newTime, taskId);
-    if (sameRoomDuplicate)
-        throw new RuntimeException(
-            "A task already exists in this room on " +
-            newDay + " at " + newTime
-        );
+        boolean sameRoomDuplicate = taskRepo.existsByRoomIdAndDayOfWeekAndTaskTimeAndIdNot(
+                task.getRoom().getId(), newDay, newTime, taskId);
+        if (sameRoomDuplicate)
+            throw new RuntimeException(
+                "A task already exists in this room on " + newDay + " at " + newTime
+            );
 
-    // ✅ Rule 2: same side + same title + same time (exclude self)
-    boolean sameSideDuplicate = taskRepo.existsDuplicateOnSameSide(
-            task.getRoom().getSide(), newDay, newTitle, newTime, task.getRoom().getId());
-    if (sameSideDuplicate)
-        throw new RuntimeException(
-            "A task with the same title and time already exists " +
-            "on the " + task.getRoom().getSide() + " side on " + newDay
-        );
+        boolean sameSideDuplicate = taskRepo.existsDuplicateOnSameSide(
+                task.getRoom().getSide(), newDay, newTitle, newTime, task.getRoom().getId());
+        if (sameSideDuplicate)
+            throw new RuntimeException(
+                "A task with the same title and time already exists " +
+                "on the " + task.getRoom().getSide() + " side on " + newDay
+            );
 
-    if (request.getTitle() != null) task.setTitle(newTitle);
-    if (request.getDescription() != null) task.setDescription(request.getDescription());
-    if (request.getDayOfWeek() != null) task.setDayOfWeek(newDay);
-    if (request.getTaskTime() != null) task.setTaskTime(newTime);
-    task.setStatus(TaskStatus.PENDING);
+        if (request.getTitle() != null) task.setTitle(newTitle);
+        if (request.getDescription() != null) task.setDescription(request.getDescription());
+        if (request.getDayOfWeek() != null) task.setDayOfWeek(newDay);
+        if (request.getTaskTime() != null) task.setTaskTime(newTime);
 
-    return mapToTaskResponse(taskRepo.save(task));
-}
+        return mapToTaskResponse(taskRepo.save(task));
+    }
 
-    // ✅ Delete task
     @Override
+    @Transactional
     public void deleteTask(Long taskId) {
         if (!taskRepo.existsById(taskId))
             throw new RuntimeException("Task not found with id: " + taskId);
-
-        // delete completion history first
         List<TaskCompletion> completions = completionRepo.findByTaskId(taskId);
         completionRepo.deleteAll(completions);
-
         taskRepo.deleteById(taskId);
     }
 
-    // ✅ Get all tasks for a room
     @Override
     public List<TaskResponse> getTasksByRoom(String roomNumber) {
         Room room = roomRepo.findByRoomNumber(roomNumber)
@@ -145,7 +132,6 @@ public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
                 .stream().map(this::mapToTaskResponse).collect(Collectors.toList());
     }
 
-    // ✅ Get tasks for a room on a specific day
     @Override
     public List<TaskResponse> getTasksByRoomAndDay(String roomNumber, String dayOfWeek) {
         Room room = roomRepo.findByRoomNumber(roomNumber)
@@ -154,24 +140,20 @@ public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
                 .stream().map(this::mapToTaskResponse).collect(Collectors.toList());
     }
 
-    // ✅ Get today's tasks for a room
     @Override
     public List<TaskResponse> getTodayTasksByRoom(String roomNumber) {
         DayOfWeek today = LocalDate.now().getDayOfWeek();
         return getTasksByRoomAndDay(roomNumber, today.name());
     }
 
-    // ✅ Mark task as done (teacher or student)
     @Override
     public TaskCompletionResponse markTaskDone(MarkTaskDoneRequest request) {
         Task task = taskRepo.findById(request.getTaskId())
                 .orElseThrow(() -> new RuntimeException("Task not found with id: " + request.getTaskId()));
 
-        // check if already marked done for this date
         if (completionRepo.existsByTaskIdAndCompletedDate(request.getTaskId(), request.getCompletedDate()))
             throw new RuntimeException("Task already marked as done for this date");
 
-        // get current logged in user
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         var user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -183,14 +165,19 @@ public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
         completion.setMarkedByRole(user.getRole().name());
         completion.setMarkedByName(user.getName());
 
-        // update task status
-        task.setStatus(TaskStatus.DONE);
-        taskRepo.save(task);
-
         return mapToCompletionResponse(completionRepo.save(completion));
     }
 
-    // ✅ Get completion history for a task
+    @Override
+    @Transactional
+    public void unmarkTaskDone(Long taskId, LocalDate date) {
+        if (!taskRepo.existsById(taskId))
+            throw new RuntimeException("Task not found with id: " + taskId);
+        if (!completionRepo.existsByTaskIdAndCompletedDate(taskId, date))
+            throw new RuntimeException("No completion found for this task on " + date);
+        completionRepo.deleteByTaskIdAndCompletedDate(taskId, date);
+    }
+
     @Override
     public List<TaskCompletionResponse> getCompletionHistory(Long taskId) {
         if (!taskRepo.existsById(taskId))
@@ -199,12 +186,25 @@ public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
                 .stream().map(this::mapToCompletionResponse).collect(Collectors.toList());
     }
 
-    // ✅ Helpers
+    @Override
+    public List<TaskCompletionResponse> getCompletionsByRoomAndDateRange(
+            String roomNumber, LocalDate from, LocalDate to) {
+        return completionRepo.findByRoomNumberAndDateRange(roomNumber, from, to)
+                .stream().map(this::mapToCompletionResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TaskCompletionResponse> getAllCompletionsByDateRange(LocalDate from, LocalDate to) {
+        return completionRepo.findAllByDateRange(from, to)
+                .stream().map(this::mapToCompletionResponse).collect(Collectors.toList());
+    }
+
     private DayOfWeek parseDayOfWeek(String day) {
         try {
             return DayOfWeek.valueOf(day.toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Invalid day: " + day + ". Use MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY");
+            throw new RuntimeException("Invalid day: " + day +
+                ". Use MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY");
         }
     }
 
@@ -215,7 +215,6 @@ public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
         res.setDescription(task.getDescription());
         res.setDayOfWeek(task.getDayOfWeek().name());
         res.setTaskTime(task.getTaskTime().toString());
-        res.setStatus(task.getStatus().name());
         res.setRoomNumber(task.getRoom().getRoomNumber());
         res.setSide(task.getRoom().getSide());
         return res;
@@ -230,6 +229,7 @@ public TaskResponse updateTask(Long taskId, UpdateTaskRequest request) {
         res.setMarkedAt(c.getMarkedAt().toString());
         res.setMarkedByRole(c.getMarkedByRole());
         res.setMarkedByName(c.getMarkedByName());
+        res.setRoomNumber(c.getTask().getRoom().getRoomNumber());
         return res;
     }
 }
