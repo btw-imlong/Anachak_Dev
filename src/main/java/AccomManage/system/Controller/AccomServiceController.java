@@ -14,6 +14,7 @@ import AccomManage.system.Service.AccomService;
 
 @RestController
 @RequestMapping("/api/services")
+@PreAuthorize("hasAnyRole('ADMIN', 'TEACHER' , 'STUDENT')")
 public class AccomServiceController {
 
     @Autowired
@@ -21,19 +22,19 @@ public class AccomServiceController {
 
     // 🔐 Admin only — manage service types
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+
     public ResponseEntity<ServiceResponse> createService(@RequestBody CreateServiceRequest request) {
         return ResponseEntity.ok(accomService.createService(request));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+
     public ResponseEntity<List<ServiceResponse>> getAllServices() {
         return ResponseEntity.ok(accomService.getAllServices());
     }
 
     @DeleteMapping("/{serviceId}")
-    @PreAuthorize("hasRole('ADMIN')")
+
     public ResponseEntity<String> deleteService(@PathVariable Long serviceId) {
         accomService.deleteService(serviceId);
         return ResponseEntity.ok("Service deleted successfully");
@@ -41,13 +42,13 @@ public class AccomServiceController {
 
     // 🔐 Admin + Teacher — assign/remove/query
     @PostMapping("/assign")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+
     public ResponseEntity<StudentServiceResponse> assign(@RequestBody AssignServiceRequest request) {
         return ResponseEntity.ok(accomService.assignServiceToStudent(request));
     }
 
     @DeleteMapping("/remove")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
+ 
     public ResponseEntity<String> remove(
             @RequestParam Long studentId,
             @RequestParam Long serviceId) {
@@ -56,13 +57,12 @@ public class AccomServiceController {
     }
 
     @GetMapping("/student/{studentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER', 'STUDENT')")
+  
     public ResponseEntity<List<StudentServiceResponse>> getByStudent(@PathVariable Long studentId) {
         return ResponseEntity.ok(accomService.getServicesByStudent(studentId));
     }
 
     @GetMapping("/{serviceId}/students")
-    @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
     public ResponseEntity<List<StudentServiceResponse>> getByService(@PathVariable Long serviceId) {
         return ResponseEntity.ok(accomService.getStudentsByService(serviceId));
     }
