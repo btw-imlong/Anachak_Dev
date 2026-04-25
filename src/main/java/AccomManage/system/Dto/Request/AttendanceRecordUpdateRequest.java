@@ -4,6 +4,8 @@ import lombok.Data;
 
 @Data
 public class AttendanceRecordUpdateRequest {
-    private String status;       // PRESENT, ABSENT, LATE
-      // optional, if another teacher marks
+    private String status;
+    private String note; 
+    // PRESENT, ABSENT, LATE
+    // optional, if another teacher marks
 }

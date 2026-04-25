@@ -11,6 +11,7 @@ public class BulkAttendanceUpdateRequest {
     @Data
     public static class RecordUpdate {
         private Long recordId;
-        private String status; // or Status if you want strict
+        private String status; 
+        private String note;// or Status if you want strict
     }
 }

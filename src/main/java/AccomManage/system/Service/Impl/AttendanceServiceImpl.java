@@ -97,6 +97,7 @@ public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumb
         res.setStudentId(r.getStudent().getId());
         res.setStudentName(r.getStudent().getName());
         res.setStatus(r.getStatus().name());
+        res.setNote(r.getNote()); // ← add this lines
         if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
         response.add(res);
     }
@@ -122,6 +123,7 @@ public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumb
                 throw new RuntimeException("Invalid status: " + r.getStatus() + ". Use PRESENT, ABSENT, or LATE");
             }
             record.setTakenBy(teacher);
+            record.setNote(r.getNote());
             records.add(record);
         }
         recordRepo.saveAll(records);
@@ -142,6 +144,7 @@ public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumb
             throw new RuntimeException("Invalid status: " + request.getStatus() + ". Use PRESENT, ABSENT, or LATE");
         }
         record.setTakenBy(teacher);
+        record.setNote(record.getNote());
 
         AttendanceRecord updated = recordRepo.save(record);
 
@@ -200,6 +203,7 @@ public List<AttendanceRecordResponse> getAttendanceByRoomAndDate(String roomNumb
                 res.setStudentId(r.getStudent().getId());
                 res.setStudentName(r.getStudent().getName());
                 res.setStatus(r.getStatus().name());
+                res.setNote(r.getNote());
                 if (r.getTakenBy() != null) res.setTeacherName(r.getTakenBy().getName());
                 response.add(res);
             }
