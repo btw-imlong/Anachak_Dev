@@ -1,10 +1,32 @@
 version: "3.9"
 
 services:
-  app:
+  backend:
     build: .
-    container_name: attendance_app
-    ports:
-      - "8080:8081"
-    env_file:
-      - .env
+    container_name: anachak_backend
+    expose:
+      - "8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://class-db-gen2-pgbouncer-1/anachak_devs_db
+      SPRING_DATASOURCE_USERNAME: group-7
+      SPRING_DATASOURCE_PASSWORD: 87136042
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SERVER_PORT: 8081
+    networks:
+      - proxy
+
+  frontend:
+    build:
+      context: https://github.com/Thoeurnbunthen/Anachak-Devs.git
+      dockerfile: Dockerfile
+    container_name: anachak_frontend
+    expose:
+      - "80"
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
