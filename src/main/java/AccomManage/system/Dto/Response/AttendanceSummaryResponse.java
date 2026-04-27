@@ -7,4 +7,5 @@ public class AttendanceSummaryResponse {
     private int present;
     private int absent;
     private int late;
+    private int total; // add this
 }

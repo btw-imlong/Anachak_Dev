@@ -14,6 +14,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -26,30 +27,41 @@ public class JwtFilter extends OncePerRequestFilter {
         this.jwtUtil = jwtUtil;
     }
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
-            throws ServletException, IOException {
+   @Override
+protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+        throws ServletException, IOException {
 
-        final String authHeader = request.getHeader("Authorization");
+    String token = null;
 
-        String email = null;
-        String token = null;
+    // 1️⃣ Try Authorization header first
+    final String authHeader = request.getHeader("Authorization");
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+    }
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            email = jwtUtil.extractEmail(token);
+    // 2️⃣ Fall back to cookie
+    if (token == null && request.getCookies() != null) {
+        for (Cookie cookie : request.getCookies()) {
+            if ("auth_token".equals(cookie.getName())) {
+                token = cookie.getValue();
+                break;
+            }
         }
+    }
 
-        if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+    if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        try {
+            String email = jwtUtil.extractEmail(token);
             var userDetails = userDetailsService.loadUserByUsername(email);
-
-            UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-
+            var authToken = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);
+        } catch (Exception e) {
+            // invalid token, just continue unauthenticated
         }
-
-        chain.doFilter(request, response);
     }
+
+    chain.doFilter(request, response);
+}
 }

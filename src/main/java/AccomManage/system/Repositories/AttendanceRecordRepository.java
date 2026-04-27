@@ -12,4 +12,9 @@ import AccomManage.system.Entity.AttendanceRecord;
 public interface AttendanceRecordRepository extends JpaRepository<AttendanceRecord, Long> {
 	 List<AttendanceRecord> findByAttendanceId(Long attendanceId);
 	 boolean existsByStudentIdAndAttendanceDate(Long studentId, LocalDate date);
+	// Add to AttendanceRecordRepository.java
+	 List<AttendanceRecord> findByStudentId(Long studentId);
+
+	 List<AttendanceRecord> findByStudentIdAndAttendance_DateBetween(
+	     Long studentId, LocalDate from, LocalDate to);
 }

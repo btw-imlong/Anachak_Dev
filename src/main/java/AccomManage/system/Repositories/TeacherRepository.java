@@ -11,5 +11,5 @@ import AccomManage.system.Entity.Teacher;
 @Repository
 public interface TeacherRepository extends JpaRepository<Teacher, Long> {
 	Optional<Teacher> findByUserEmail(String email);
-	Optional<Teacher> findByUserId(Long teacherId);
+	Optional<Teacher> findByUser_Id(Long teacherId);
 }

@@ -14,8 +14,8 @@ import AccomManage.system.Dto.Response.*;
 import AccomManage.system.Service.AttendanceService;
 
 @RestController
-@RequestMapping("/attendance")
-@PreAuthorize("hasRole('TEACHER')")
+@RequestMapping("/api/attendance")
+@PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
 public class AttendanceController {
 
     private final AttendanceService service;
@@ -70,4 +70,27 @@ public class AttendanceController {
 
         return ResponseEntity.ok(summary);
     }
+ // Add these to AttendanceController.java
+
+    @PutMapping("/{recordId}")
+    public ResponseEntity<AttendanceRecordResponse> updateRecord(
+            @PathVariable Long recordId,
+            @RequestBody AttendanceRecordUpdateRequest request) {
+        return ResponseEntity.ok(service.updateAttendanceRecord(recordId, request));
+    }
+
+    @GetMapping("/today")
+    public ResponseEntity<List<AttendanceRecordResponse>> today() {
+        return ResponseEntity.ok(service.getTodayAttendance());
+    }
+ 
+ @PatchMapping("/help-mode")
+ public ResponseEntity<ToggleHelpModeResponse> toggleHelpMode() {
+     return ResponseEntity.ok(service.toggleHelpMode());
+ }
+ @GetMapping("/today/summary")
+ public ResponseEntity<AttendanceSummaryResponse> todaySummaryForTeacher() {
+     return ResponseEntity.ok(service.getTodaySummaryForTeacher());
+ }
+ 
 }

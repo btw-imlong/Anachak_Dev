@@ -25,4 +25,7 @@ public class AttendanceRecord {
     @ManyToOne
     @JoinColumn(name = "teacher_id")
     private Teacher takenBy;
+
+    @Column(columnDefinition = "TEXT")
+    private String note; 
 }

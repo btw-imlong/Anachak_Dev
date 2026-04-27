@@ -1,16 +1,28 @@
 package AccomManage.system.Entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Data
 @Entity
+@Table(name = "task")
 public class Task {
-    @Id @GeneratedValue
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "task_gen")
+    @SequenceGenerator(name = "task_gen", sequenceName = "task_seq", allocationSize = 1)
     private Long id;
-    private String name;
-}
 
-    // getters/setters
+    private String title;
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    private DayOfWeek dayOfWeek;
+
+    private LocalTime taskTime;
+
+    @ManyToOne
+    @JoinColumn(name = "room_id")
+    private Room room;
+}

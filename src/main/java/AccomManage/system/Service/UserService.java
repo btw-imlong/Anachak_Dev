@@ -1,21 +1,37 @@
 package AccomManage.system.Service;
 
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import AccomManage.system.Dto.Request.CreateStudentRequest;
-import AccomManage.system.Dto.Request.CreateTeacherRequest;
-
-import AccomManage.system.Dto.Request.LoginRequest;
-import AccomManage.system.Dto.Response.LoginResponse;
+import AccomManage.system.Dto.Request.*;
+import AccomManage.system.Dto.Response.*;
 import AccomManage.system.Entity.User;
 
-public interface UserService {
-	    LoginResponse login(LoginRequest request);
-	    
-	    List<User> getAllUsers();
-	    User getUserById(Long id);
-	    void deleteUser(Long id);
-		User createTeacher(CreateTeacherRequest request);
+import java.util.List;
 
-		User createStudent(CreateStudentRequest request);
+public interface UserService {
+
+    // Create
+    TeacherResponse createTeacher(CreateTeacherRequest request);
+    StudentResponse createStudent(CreateStudentRequest request);
+
+    // Read single
+    StudentResponse getStudentById(Long studentId);
+    StudentResponse getStudentByUserId(Long userId);
+    TeacherResponse getTeacherById(Long teacherId);
+    TeacherResponse getTeacherByUserId(Long userId);
+    User getUserById(Long id);
+
+    // Read list
+    List<User> getAllUsers();
+    Page<StudentResponse> getAllStudents(Pageable pageable);
+    Page<StudentResponse> getStudentsWithoutRoom(Pageable pageable);
+    Page<TeacherResponse> getAllTeachers(Pageable pageable);
+
+    // Update
+    StudentResponse updateStudent(Long studentId, UpdateStudentRequest request);
+    TeacherResponse updateTeacher(Long teacherId, UpdateTeacherRequest request);
+
+    // Delete
+    void deleteUser(Long id);
 }
