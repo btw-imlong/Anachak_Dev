@@ -50,11 +50,12 @@ public class AuthController {
 
         // 🍪 Set JWT as HTTP-only cookie
         Cookie cookie = new Cookie("auth_token", token);
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);        // Change to true when using HTTPS
-        cookie.setPath("/");
-        cookie.setMaxAge(30 * 24 * 60 * 60); // 30 days
-        response.addCookie(cookie);
+cookie.setHttpOnly(true);
+cookie.setSecure(true);           // required for SameSite=None
+cookie.setPath("/");
+cookie.setAttribute("SameSite", "None");  // allow cross-site cookie
+cookie.setMaxAge(30 * 24 * 60 * 60);
+response.addCookie(cookie);
 
         // Return user info (keep token in body too during transition, remove later)
         LoginResponse loginResponse = new LoginResponse();
